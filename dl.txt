@@ -1,3 +1,382 @@
+exp1 part1
+single variable
+
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+
+# Generate some sample data
+np.random.seed(0)
+X = np.random.rand(100, 1)  # Input feature
+y = 2 * X + 1 + 0.1 * np.random.randn(100, 1)  # True labels with some noise
+
+# Create a Sequential model for linear regression
+model = Sequential()
+model.add(Dense(1, input_shape=(1,)))  # Single dense layer (linear regression)
+
+# Compile the model
+model.compile(optimizer='sgd', loss='mean_squared_error')
+
+# Train the model
+model.fit(X, y, epochs=100, verbose=0)
+
+# Print the learned weights
+print("Learned weights:", model.layers[0].get_weights())
+
+# Make predictions
+new_X_reg = np.array([[0.6], [0.8]])
+predictions_reg = model.predict(new_X_reg)
+print("Regression predictions:")
+print(predictions_reg)
+
+###################################################################
+
+exp1 part2
+multiple variable
+
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+
+# Load the data
+prices_df = pd.read_csv('prices-split-adjusted.csv')
+fundamentals_df = pd.read_csv('fundamentals.csv')
+
+# Merge relevant columns from fundamentals into the prices dataframe
+data_df = pd.merge(prices_df, fundamentals_df[['Ticker Symbol']], how='inner', left_on='symbol', right_on='Ticker Symbol')
+
+# Choose the features and target
+X = data_df[['open', 'low', 'high']].values
+y = data_df['close'].values
+
+# Split the data into train and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Standardize the features
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Build a neural network regression model
+model = Sequential()
+model.add(Dense(32, input_dim=X_train_scaled.shape[1], activation='relu'))
+model.add(Dense(16, activation='relu'))
+model.add(Dense(1))  # Output layer for regression
+
+model.compile(optimizer='adam', loss='mean_squared_error')
+
+# Train the model
+model.fit(X_train_scaled, y_train, epochs=1, batch_size=32, verbose=1)
+
+# Evaluate the model on the test set
+loss = model.evaluate(X_test_scaled, y_test, verbose=0)
+print(f"Mean Squared Error on Test Set: {loss:.4f}")
+
+# Make predictions on the test set
+y_pred = model.predict(X_test_scaled)
+
+# Print some example predictions and actual values
+for i in range(5):
+    print(f"Predicted: {y_pred[i][0]:.4f}  |  Actual: {y_test[i]:.4f}")
+
+# Calculate Mean Squared Error for the predictions
+mse = np.mean((y_pred - y_test) **2)
+print(f"\nMean Squared Error: {mse:.4f}")
+
+######################################################################################
+
+exp 2
+
+
+get_ipython().system('pip install SpeechRecognition')
+get_ipython().system('pip install pyaudio')
+get_ipython().system('pip install gTTS')
+
+#Converting Speech to Text:
+import speech_recognition as sr
+# Initialize the recognizer
+recognizer = sr.Recognizer()
+# Capture audio from microphone
+with sr.Microphone() as source:
+    print("Speak something:")
+    audio = recognizer.listen(source)
+# Recognize the speech
+try:
+    text = recognizer.recognize_google(audio)
+    print("You said:", text)
+except sr.UnknownValueError:
+    print("Sorry, could not understand the audio")
+except sr.RequestError as e:
+    print(f"Error fetching results from Google Speech Recognition: {e}")
+
+#Converting Text to Speech:
+from gtts import gTTS
+import os
+text = "Hello, this is a text-to-speech example in deep learning ."
+# Create a gTTS object
+tts = gTTS(text, lang='en')
+# Save the audio file
+tts.save("output.mp3")
+# Play the audio file
+os.system("start output.mp3")
+
+# Video into frames
+import cv2
+# Open the video file
+video_path = 'testingvideo.mp4'
+cap = cv2.VideoCapture(video_path)
+# Get the frames per second (fps) and frame count
+fps = int(cap.get(cv2.CAP_PROP_FPS))
+frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+# Loop through the frames and save each frame as an image
+for frame_num in range(frame_count):
+    ret, frame = cap.read()
+    if ret:
+        frame_filename = f'frame_{frame_num:04d}.jpg'
+        cv2.imwrite(frame_filename, frame)
+        print(f"Saved {frame_filename}")
+    else:
+        print(f"End of video at frame {frame_num}")
+        break
+# Release the video capture object
+cap.release()
+
+######################################################################################
+exp 3
+
+character recognition CNN
+
+import os
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from PIL import Image
+from sklearn.model_selection import train_test_split
+from tensorflow.keras import utils
+from tensorflow.keras.layers import Dense, Conv2D, MaxPooling2D, Dropout, Flatten
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau
+
+# x_train = pd.read_csv('/kaggle/input/emnist/emnist-letters-train.csv')
+x_train = pd.read_csv('C:\\Users\\DELL\\OneDrive\\Desktop\\SKIT\\Deep Learning\\Lab\\Data set\\EMNIST\\emnist-letters-train.csv')
+input_shape = (28, 28, 1)
+
+x_train.head()
+
+y_train = x_train['23']
+del x_train['7']
+
+# Highlighting the right answers
+y_train = utils.to_categorical(y_train)
+
+# Divide the array into two parts
+x_train = np.array(x_train)
+x_train = x_train.reshape(x_train.shape[0], 28, 28, 1)  # Convert to 2D image format
+x_train = np.rot90(x_train, axes=(1, 2))
+x_train = np.flip(x_train, axis=1)
+x_train = x_train.astype(np.float32)
+
+# Normalize for training (from 0 to 1)
+x_train /= 255.0
+
+random_seed = 2
+X_train, X_val, Y_train, Y_val = train_test_split(x_train, y_train, test_size=0.1, random_state=random_seed)
+
+# Expanding the data
+# Create a generator that rotates, zooms, and shifts images
+datagen = ImageDataGenerator(rotation_range=10, zoom_range=0.1, width_shift_range=0.1, height_shift_range=0.1)
+
+# Create a neural network
+model = Sequential()
+# The first block consists of two layer
+# Subsample layer with selection of the maximum value in a 2 by 2# The output is a fully connected layer with 27 neurons (27 is the number of letters) squares of convolution, 
+# each with 32 feature cards, the size of the convolution core is 2 by 2
+model.add(Conv2D(filters=64, kernel_size=(2, 2), padding='Same', activation='relu', input_shape=input_shape))
+model.add(Conv2D(filters=64, kernel_size=(2, 2), padding='Same', activation='relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+# A layer that shuts down neurons with a 25 percent probability to prevent overlearning
+model.add(Dropout(0.25))
+# The second convolution block - two layers of convolution, 
+# each with 32 feature cards, the size of the convolution core is 2 by 2
+model.add(Conv2D(filters=64, kernel_size=(2, 2), padding='Same', activation='relu'))
+model.add(Conv2D(filters=64, kernel_size=(2, 2), padding='Same', activation='relu'))
+# Subsample layer with selection of the maximum value in a 2 by 2 square
+model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
+# A layer that shuts down neurons with a 25 percent probability to prevent overlearning
+model.add(Dropout(0.25))
+# The end of the convolutional part of the neural networkmodel.add(Dense(27, activation='softmax'))
+
+# The fully connected part, responsible for classification
+# The layer converts the two-dimensional output of the folding part into a one-dimensional array
+model.add(Flatten())
+# A fully connected layer with 256 neurons
+model.add(Dense(256, activation='relu'))
+# A layer that shuts down neurons with a 25 percent probability to prevent overlearning
+model.add(Dropout(0.25))
+# The output is a fully connected layer with 27 neurons (27 is the number of letters)
+model.add(Dense(27, activation='softmax'))
+
+# Compile the neural network
+# Loss function - categorical cross-entropy
+model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
+
+# Mini-sample size - 96 images
+batch_size = 96
+
+# Network training
+# We use two flasks
+# The first colbel is responsible for saving the best network option
+# val_acc - the proportion of correct answers on the test set, save only the best network to a file named mnist_cnn.hdf5
+chekpoint = ModelCheckpoint('CNN_model_3_EMNIST_best.hdf5', monitor='val_accuracy', save_best_only=True, verbose=1)
+
+# The second callback is changing the speed of learning
+# If the quality of the set under test does not change in three iterations, the speed parameter is divided in half
+learning_rate_reduction = ReduceLROnPlateau(monitor='val_accuracy', patience=3, verbose=1, factor=0.5,min_lr=0.00001)
+
+# For training, we use the generator we created earlier
+history = model.fit(datagen.flow(X_train, Y_train, batch_size=batch_size), epochs=50,
+                    validation_data=(X_val, Y_val), steps_per_epoch=X_train.shape[0] // batch_size, verbose=1,
+                    callbacks=[chekpoint, learning_rate_reduction])
+
+# Display the graph of the learning outcome
+history_dict = history.history
+acc_values = history_dict['accuracy']
+val_acc_values = history_dict['val_accuracy']
+epochs = range(1, len(acc_values) + 1)
+plt.plot(epochs, acc_values, 'bo', label='Training acc')
+plt.plot(epochs, val_acc_values, 'b', label='Validation acc')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.show()
+
+class_mapping = ' ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+import random
+
+testing_letter = pd.read_csv('/kaggle/input/emnist/emnist-letters-test.csv')
+
+x2 = np.array(testing_letter.iloc[:,1:].values)
+test_images = x2 / 255.0
+
+test_images_number = test_images.shape[0]
+test_images_height = 28
+test_images_width = 28
+test_images_size = test_images_height*test_images_width
+
+test_images = test_images.reshape(test_images_number, test_images_height, test_images_width, 1)
+test_images = np.rot90(test_images, axes=(1, 2))
+test_images = np.flip(test_images, axis=1)
+right = 0
+wrong = 0
+for idx in range(1,1000):
+    # idx = random.randint(0, 8000)
+    result = np.argmax(model.predict(test_images[idx:idx+1]))
+    answer = testing_letter.values[idx,0]
+    if (result == answer):
+        right += 1
+    else:
+        wrong += 1
+print("Correct answer = ", right, " / 1 000")
+print("Incorrect answer = ", wrong, " / 1 000")
+
+######################################################################
+https://github.com/kyi3081/stock-analysis/blob/master/prices-split-adjusted.csv
+https://github.com/kyi3081/stock-analysis/blob/master/fundamentals.csv
+######################################################################
+
+number recognition
+
+import numpy as np
+from keras.datasets import mnist
+import matplotlib.pyplot as plt
+
+#load dataset
+(x_train,y_train),(x_test,y_test)=mnist.load_data()
+
+#count the unique train labels
+unique, counts = np.unique(y_train, return_counts=True)
+print("Train labels :", dict(zip(unique,counts)))
+
+#count the number of unique test labels
+unique, count = np.unique(y_test, return_counts=True)
+print("Test labels :", dict(zip(unique,counts)))
+
+#sample 25 mnist digit fromtrain dataset
+indexes =np.random.randint(0, x_train.shape[0], size =25)
+images=x_train[indexes]
+labels=y_train[indexes]
+
+#plot the 25 mnist digits
+plt.figure(figsize=(5,5))
+for i in range(len(indexes)):
+    plt.subplot(5,5,i+1)
+    image=images[i]
+    plt.imshow(image, cmap='gray')
+    plt.axis('off')
+plt.show()
+plt.savefig("mnist-sample.png")
+plt.close('all')
+
+#MNIST digit classifier model
+#compute the number of labels
+num_labels=len(np.unique(y_train))
+
+# convert to one hot vector
+from keras.utils import to_categorical,plot_model
+y_train=to_categorical(y_train)
+y_test=to_categorical(y_test)
+
+#image dimensions
+image_size=x_train.shape[1]
+input_size=image_size*image_size
+
+#resize and normalize
+x_train= np.reshape(x_train,[-1,input_size])
+x_train=x_train.astype('float32')/255
+x_test =np.reshape(x_test,[-1,input_size])
+x_test=x_test.astype('float32')/255
+
+#network parameter 
+batch_size=128
+hidden_units=256
+dropout=0.45
+
+#model ia s 3- layer MLP with Relu and dropout after each layer
+from keras.models import Sequential
+from keras.layers import Dense, Activation, Dropout
+model=Sequential()
+model.add(Dense(hidden_units,input_dim=input_size))
+model.add(Activation('relu'))
+model.add(Dropout(dropout))
+model.add(Activation('relu'))
+model.add(Dropout(dropout))
+model.add(Dense(num_labels))
+
+#this is the output for one hot encoder
+model.add(Activation('softmax'))
+model.summary()
+plot_model(model,to_file='mlp_mnist.png',show_shapes=True)
+
+#loss function for one hot vector
+#use of adam optimizer
+#accuracy is a good metrics for classification tasks
+model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy'])
+
+#train the network
+model.fit(x_train,y_train,epochs=20,batch_size=batch_size)
+
+#validate the model on test dataset
+loss,acc=model.evaluate(x_test, y_test,batch_size=batch_size)
+print("\nTest accuracy:%1f%%" %(100*acc))
+
+
+--------------------------------------------------------------------------------------------------
 import numpy as np
 import pandas as pd
 from keras.models import Sequential
